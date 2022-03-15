@@ -11,14 +11,20 @@ Resources:
     Type: AWS::IAM::User
     Properties:
       UserName: !Ref UserName
+      Groups:
+      - !Ref SpecialS3ReadOnlyGroup
 
-  SpecialS3Policy:
-    DependsOn: SpecialS3ReadOnlyUser
-    Type: 'AWS::IAM::Policy'
+  SpecialS3ReadOnlyGroup:
+    Type: AWS::IAM::Group
+    Properties: 
+      GroupName: SpecialS3ReadOnlyGroup
+  
+  SpecialS3ReadOnlyPolicy:
+    Type: AWS::IAM::Policy
     Properties:
-      PolicyName: SpecialS3ReadOnly
-      Users:
-        - Ref: UserName
+      PolicyName: SpecialS3ReadOnlyPolicy
+      Groups:
+      - !Ref SpecialS3ReadOnlyGroup
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -59,7 +65,8 @@ Resources:
           Resource: arn:aws:s3:::*/*
 
 Outputs:
-  SpecialS3Policy:
-    Description: The S3 Policy ARN
-    Value:
-      Ref: SpecialS3Policy
+  SpecialS3Group:
+    Description: The S3 Group ARN
+    Export:
+      Name: SpecialS3ReadOnlyGroup
+    Value: !Ref SpecialS3ReadOnlyGroup

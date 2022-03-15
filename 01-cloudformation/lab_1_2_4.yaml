@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS S3 User
+Parameters:
+  UserName:
+    Description: User Name
+    Type: String
+    Default: "SpecialS3ReadOnlyUser"
+
+Resources:
+  SpecialS3ReadOnlyUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref UserName
+      Groups:
+        - !ImportValue "SpecialS3ReadOnlyGroup"
