@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: S3 resource creation
+Resources:
+  PreferredS3Bucket:
+    Type: AWS::S3::Bucket
+    Description: Creating Amazon S3 bucket from CloudFormation
+    Condition: PreferredRegion
+    Properties:
+      BucketName:
+        Fn::Join: ["-", [!Ref AWS::AccountId, !Ref BucketName]]
+  NotPreferredS3Bucket:
+    Type: AWS::S3::Bucket
+    Description: Creating Amazon S3 bucket from CloudFormation
+    Condition: NotPreferredRegion
+    Properties:
+      BucketName:
+        Fn::Join: ["-", [!Ref AWS::Region, !Ref BucketName]]
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: nbaker-labs-bucket
+    Description: Enter a name for the S3 bucket.
+
+Conditions:
+  PreferredRegion: !Equals
+    - !Ref "AWS::Region"
+    - "us-east-1"
+  NotPreferredRegion: !Not
+    - !Equals
+      - !Ref "AWS::Region"
+      - "us-east-1"
