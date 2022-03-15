@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: S3 resource creation
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Description: Creating Amazon S3 bucket from CloudFormation
+    Properties:
+      BucketName:
+        Ref: BucketName
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: nbaker-labs-bucket-2
+    Description: Enter a name for the S3 bucket.
