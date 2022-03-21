@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS S3 User
+Resources:
+  CustomIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref AWS::AccountId
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide readonly access to IAM
+      RoleName: CustomIAMRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/IAMReadOnlyAccess
+
+  CustomIAMRole2:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref AWS::AccountId
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide readonly access to IAM
+      RoleName: CustomIAMRole2
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/IAMReadOnlyAccess
+      - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
