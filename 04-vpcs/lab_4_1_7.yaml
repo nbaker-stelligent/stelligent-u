@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS S3 User
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsHostnames: 'true'
+      EnableDnsSupport: 'true'
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.2"
+  mySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.2"
+  myIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.2"
+  attachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: myIGW
+  publicInternetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.2"
+  attachRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref publicInternetRouteTable
+      SubnetId: !Ref mySubnet
+  igwRoute:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId:
+          Ref: publicInternetRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId:
+          Ref: myIGW
+  myPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: "us-east-1a"
+  natEIP:
+    Type: AWS::EC2::EIP
+  NAT:
+    Type: AWS::EC2::NatGateway
+    Properties:
+        AllocationId:
+          Fn::GetAtt:
+          - natEIP
+          - AllocationId
+        SubnetId:
+          Ref: myPrivateSubnet
+  privateNatRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+  attachRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref publicInternetRouteTable
+      SubnetId: !Ref mySubnet
+  natRoute:
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId:
+          Ref: privateNatRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId:
+          Ref: NAT
+  myPrivateEC2:  
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-0c02fb55956c7d316
+      InstanceType: t2.micro
+      KeyName: nb-stelligent-kp
+      SubnetId: !Ref myPrivateSubnet
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 25
+Outputs:
+  vpcId:
+    Description: The VPC ID
+    Export:
+      Name: myVPC
+    Value: !Ref myVPC
+  subnetId:
+    Description: The subnet ID
+    Export:
+      Name: mySubnet
+    Value: !Ref mySubnet
