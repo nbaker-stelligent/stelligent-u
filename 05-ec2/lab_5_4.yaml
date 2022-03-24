@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EC2 Launch Template
+
+Resources:
+  baseLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt myCloudWatchProfile.Arn
+        InstanceType: t2.micro
+        KeyName: nb-stelligent-kp
+        SecurityGroupIds:
+        - !Ref mySecurityGroup
+        UserData: 
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            cd /tmp
+            wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E ./amazon-cloudwatch-agent.deb
+            touch /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            printf "{\n  \"agent\": {\n    \"metrics_collection_interval\": 60,\n    \"run_as_user\": \"cwagent\"\n  },\n  \"metrics\": {\n    \"append_dimensions\": {\n        \"InstanceId\": \"${!aws:InstanceId}\"\n    },\n    \"metrics_collected\": {\n      \"disk\": {\n        \"measurement\": [\n          \"used_percent\"\n        ],\n        \"metrics_collection_interval\": 60,\n        \"resources\": [\n          \"/\"\n        ]\n      }\n    }\n  }\n}\n" >> /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            systemctl restart amazon-cloudwatch-agent
+
+            ## mount ebs on path
+            mkfs -t ext4 /dev/xvdcz || true
+            mkdir /mnt/ebs_store || true
+            mount /dev/xvdcz /mnt/ebs_store
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: 20
+              VolumeType: gp2
+              DeleteOnTermination: true
+              Encrypted: true
+              SnapshotId: snap-0591940b3e00c937b
+            DeviceName: /dev/xvdcz
+      LaunchTemplateName: nb-baseLaunchTemplate
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+           - "Key": "Name"
+             "Value": "nb-baseLaunchTemplate"
+
+  myEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref myUbuntuEC2
+
+  mySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Allow ssh"
+      GroupName: "mySecurityGroup"
+      VpcId: vpc-0b92caefc9340c4ff
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0  
+
+  myUbuntuEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+         LaunchTemplateId: !Ref baseLaunchTemplate
+         Version: 1
+      ImageId: ami-0efe4f891cb9f7b45
+      Tags:
+        - Key: "Name"
+          Value: "nb-ubuntuEC2"
+
+  myCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Permissions for CloudWatch to log custom metrics from EC2
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      Tags:
+        - Key: "Name"
+          Value: myCloudWatchRole
+
+  myCloudWatchProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: myCloudWatchProfile
+      Roles:
+       - !Ref myCloudWatchRole

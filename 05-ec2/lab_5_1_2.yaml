@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EC2 Launch Template
+
+Resources:
+  baseLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: t2.micro
+        KeyName: nb-stelligent-kp
+      LaunchTemplateName: nb-baseLaunchTemplate
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+           - "Key": "Name"
+             "Value": "nb-baseLaunchTemplate"
+
+  myWinEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref baseLaunchTemplate
+        Version: 1
+      ImageId: ami-0f9139fc7335dcec4
+      Tags:
+        - Key: "Name"
+          Value: "nb-windowsEC2"
+
+  myUbuntuEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+         LaunchTemplateId: !Ref baseLaunchTemplate
+         Version: 1
+      ImageId: ami-0efe4f891cb9f7b45
+      Tags:
+        - Key: "Name"
+          Value: "nb-ubuntuEC2"
