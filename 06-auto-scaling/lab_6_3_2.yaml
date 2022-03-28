@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EC2 Launch Template
+
+Resources:
+  baseLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: ami-0efe4f891cb9f7b45
+        InstanceType: t2.small
+        KeyName: nb-stelligent-kp
+        SecurityGroupIds:
+        - !Ref mySecurityGroup
+      LaunchTemplateName: nb-baseLaunchTemplate
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+           - "Key": "Name"
+             "Value": "nb-baseLaunchTemplate"
+
+  myUbuntuASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      AutoScalingGroupName: nb-asg
+      DesiredCapacity: 1
+      LaunchTemplate:
+        LaunchTemplateId: !Ref baseLaunchTemplate
+        Version: !GetAtt baseLaunchTemplate.LatestVersionNumber
+      MaxSize: 3
+      MinSize: 1
+      VPCZoneIdentifier: 
+        - subnet-076f325385cdc715e
+        - subnet-099e812ba57261a12
+        - subnet-0defd38890db4d344
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: true
+        
+  mySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Allow ssh"
+      GroupName: "mySecurityGroup"
+      VpcId: vpc-0b92caefc9340c4ff
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
+
+  myScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref myUbuntuASG
+      ScalingAdjustment: 1
+
+  myCloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref myScaleOutPolicy
+      AlarmDescription: Scale-out if CPU utilization is above 60% over a period of 2 minutes
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myUbuntuASG
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 120
+      Statistic: Average
+      Threshold: 60
+    DependsOn: myScaleOutPolicy
+
+  myScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref myUbuntuASG
+      ScalingAdjustment: -1
+
+  myCloudWatchAlarmIn:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref myScaleInPolicy
+      AlarmDescription: Scale-in if CPU utilization is below 40% over a period of 2 minutes
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myUbuntuASG
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 120
+      Statistic: Average
+      Threshold: 40
+    DependsOn: myScaleOutPolicy

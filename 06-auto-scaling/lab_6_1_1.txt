@@ -1,0 +1,6 @@
+aws autoscaling create-auto-scaling-group \
+--auto-scaling-group-name nb-1234 \
+--instance-id i-05808793a13f9d3bb \
+--min-size 1 \
+--max-size 3 \
+--region us-east-1
