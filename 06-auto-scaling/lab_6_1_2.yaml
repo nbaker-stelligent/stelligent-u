@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: EC2 Launch Template
+
+Resources:
+  myUbuntuLC:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties: 
+      AssociatePublicIpAddress: true
+      ImageId: ami-0efe4f891cb9f7b45
+      InstanceType: t2.micro
+      KeyName: nb-stelligent-kp
+      LaunchConfigurationName: nb-launchConfig
+      SecurityGroups: 
+        - !Ref mySecurityGroup
+      #UserData: String
+
+  myUbuntuASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      AutoScalingGroupName: nb-asg
+      DesiredCapacity: 1
+      LaunchConfigurationName: !Ref myUbuntuLC
+      MaxSize: 3
+      MinSize: 1
+      VPCZoneIdentifier: 
+        - subnet-076f325385cdc715egma
+        - subnet-099e812ba57261a12
+        - subnet-0defd38890db4d344
+
+  mySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Allow ssh"
+      GroupName: "mySecurityGroup"
+      VpcId: vpc-0b92caefc9340c4ff
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
