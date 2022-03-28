@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS S3 User
+Resources:
+  CustomS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref AWS::AccountId
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide readonly access to S3
+      RoleName: CustomS3Role
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy: 
+          Version: 2012-10-17
+          Id: key-s3
+          Statement:
+            - Sid: Enable IAM User Permissions
+              Effect: Allow
+              Principal:
+                AWS: !Join
+                  - ''
+                  - - 'arn:aws:iam::'
+                    - !Ref 'AWS::AccountId'
+                    - ':root'
+              Action: 'kms:*'
+              Resource: '*'
+  CustomIAMReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+      - !Ref CustomS3Role
+      ManagedPolicyName: CustomS3Role
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: 
+            - "s3:ListBucket"
+            - "s3:ListAllMyBuckets"       
+            Resource: "arn:aws:s3:::*"
+          - Effect: Allow
+            Action:
+            - "s3:*"
+            Resource: 
+            - "arn:aws:s3:::stelligent-u-nbaker-a"
+            - "arn:aws:s3:::stelligent-u-nbaker-a/*"
+          - Effect: Allow
+            Action:
+            - "s3:ListBucket"
+            - "s3:GetObject"
+            Resource:
+            - "arn:aws:s3:::stelligent-u-nbaker-b"
+            - "arn:aws:s3:::stelligent-u-nbaker-b/lebowsji/*"
+  S3BucketA:
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: stelligent-u-nbaker-a
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt KMSKey.KeyId
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: IARule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+          - Id: GlacierRule
+            Status: Enabled
+            Transitions:      
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+          -
+            AbortIncompleteMultipartUpload: 
+              DaysAfterInitiation: 1
+            NoncurrentVersionExpirationInDays: 7
+            Status: Enabled
+  S3BucketB:
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: stelligent-u-nbaker-b
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt KMSKey.KeyId
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: IARule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+          - Id: GlacierRule
+            Status: Enabled
+            Transitions:      
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+          -
+            AbortIncompleteMultipartUpload: 
+              DaysAfterInitiation: 1
+            NoncurrentVersionExpirationInDays: 7
+            Status: Enabled
