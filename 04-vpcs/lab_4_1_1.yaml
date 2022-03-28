@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS S3 User
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsHostnames: 'true'
+      EnableDnsSupport: 'true'
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.1"
+  mySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: Name
+        Value: nbaker-stelligent-lab-4
+      - Key: user
+        Value: nbaker-stelligent
+      - Key: stelligent-u-lesson
+        Value: "4.1"
+      - Key: stelligent-u-lab
+        Value: "4.1.1"
+
+Outputs:
+  vpcId:
+    Description: The VPC ID
+    Export:
+      Name: myVPC
+    Value: !Ref myVPC
+  subnetId:
+    Description: The subnet ID
+    Export:
+      Name: mySubnet
+    Value: !Ref mySubnet

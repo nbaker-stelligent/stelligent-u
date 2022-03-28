@@ -1,0 +1,5 @@
+aws ec2 create-key-pair \
+    --key-name nb-stelligent-kp \
+    --key-type rsa \
+    --query "KeyMaterial" \
+    --output text > nb-stelligent-kp.pem

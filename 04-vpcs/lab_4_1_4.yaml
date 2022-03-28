@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS EC2 Instance
+Resources:
+  myEC2:  
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-0c02fb55956c7d316
+      InstanceType: t2.small
+      KeyName: nb-stelligent-kp
+      SubnetId: !ImportValue mySubnet
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 250
