@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  WebServerAsg:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      AutoScalingGroupName: 'AutomationBoxes'
+      VPCZoneIdentifier:
+        - 'subnet-01d68660fba20d536' 
+        - 'subnet-0649150db183b4779'
+        - 'subnet-02b5c80c62c2be14d'
+        - 'subnet-08e2bb358929ca17f'
+        - 'subnet-056e0b20e202f96e2'
+        - 'subnet-0b2fa1151652a1609'
+      DesiredCapacity: '3'
+      HealthCheckType: 'ELB'
+      HealthCheckGracePeriod: 30 
+      LaunchConfigurationName: !Ref WebServersLC
+      MaxSize: '3'
+      MinSize: '3'
+      TargetGroupARNs:
+        - !Ref nbTargetGroup
+
+  WebServersLC:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      ImageId: 'ami-0abfd868f654b92be'
+      InstanceType: 't2.micro'
+      LaunchConfigurationName: 'SimpleWebServerLC'
+      SecurityGroups:
+        - 'sg-0762a24ffec5ca84d'
+      UserData: 
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+
+            yum install -y nginx
+
+            yum install -y aws-cfn-bootstrap
+
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v \
+              --stack ${AWS::StackName} \
+              --resource WebServersLC \
+              --configsets All \
+              --region ${AWS::Region}
+
+            # Signal the status from cfn-init
+            /opt/aws/bin/cfn-signal -e $? \
+              --stack ${AWS::StackName} \
+              --resource WebServersLC \
+              --region ${AWS::Region}
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          All:
+            - ConfigureStelligentProject
+        ConfigureStelligentProject:
+          packages:
+            yum:
+              nginx: []
+          files:
+            /usr/share/nginx/html/index.html:
+              content: '<p>Automation for the People</p>'
+              mode: '000644'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              nginx:
+                enabled: 'true'
+                ensureRunning: 'true'
+
+  nbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: /index.html
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: "Name"
+          Value: "nb-target_group"
+      VpcId: vpc-0ef2430c4a3838858
+    DependsOn:
+      - nbALB
+
+  nbALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups: 
+        - sg-0762a24ffec5ca84d
+      Subnets: 
+        - 'subnet-01d68660fba20d536' 
+        - 'subnet-0649150db183b4779'
+        - 'subnet-02b5c80c62c2be14d'
+        - 'subnet-08e2bb358929ca17f'
+        - 'subnet-056e0b20e202f96e2'
+        - 'subnet-0b2fa1151652a1609'
+      Tags:
+        - Key: "Name"
+          Value: "nb-application-load-balancer"
+
+  nbALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: 
+        - TargetGroupArn: !Ref nbTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref nbALB
+      Port: 80
+      Protocol: HTTP
