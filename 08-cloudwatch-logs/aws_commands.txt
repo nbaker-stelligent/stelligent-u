@@ -1,0 +1,17 @@
+# create a log group
+aws logs create-log-group --log-group-name nathan.baker.logs --tags Name=nb-log-group
+
+# create log stream
+aws logs create-log-stream --log-group-name nathan.baker.logs --log-stream-name nb-training
+
+# get logs
+awslogs get nathan.baker.logs ALL --aws-region us-east-1
+
+# get logs from last 5 mins
+awslogs get nathan.baker.logs ALL --aws-region us-east-1 --start='5m'
+
+# set log retention
+aws logs put-retention-policy --log-group-name nathan.baker.logs --retention-in-days 60
+
+# cleanup
+aws logs delete-log-group --log-group-name nathan.baker.logs
