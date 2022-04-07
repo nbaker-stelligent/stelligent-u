@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  name:
+    Description: name
+    Type: String
+  team:
+    Description: title
+    Type: String
+  timezone:
+    Description: timezone
+    Type: String
+  state:
+    Description: state
+    Type: String
+  startdate:
+    Description: start_date
+    Type: String
+
+Resources:
+  nameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/name
+      Type: String
+      Value: !Ref name
+      Description: Name of the engineer
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  teamParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/team
+      Type: String
+      Value: !Ref team
+      Description: Engineer's team
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  timezoneParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/timezone
+      Type: String
+      Value: !Ref timezone
+      Description: Engineer's timezone
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  stateParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/state
+      Type: String
+      Value: !Ref timezone
+      Description: location
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  startdateParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/title
+      Type: String
+      Value: !Ref startdate
+      Description: Engineer's start date
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  middlenameParam:
+    Description: Engineer's Middle Name
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /nb/stelligent-u/lab11/middlename
+  WebServerAsg:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      AutoScalingGroupName: 'AutomationBoxes'
+      VPCZoneIdentifier:
+        - 'subnet-01d68660fba20d536' 
+        - 'subnet-0649150db183b4779'
+        - 'subnet-02b5c80c62c2be14d'
+        - 'subnet-08e2bb358929ca17f'
+        - 'subnet-056e0b20e202f96e2'
+        - 'subnet-0b2fa1151652a1609'
+      DesiredCapacity: '3'
+      HealthCheckType: 'ELB'
+      HealthCheckGracePeriod: 30 
+      LaunchConfigurationName: !Ref WebServersLC
+      MaxSize: '3'
+      MinSize: '3'
+      TargetGroupARNs:
+        - !Ref nbTargetGroup
+
+  WebServersLC:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      ImageId: 'ami-0abfd868f654b92be'
+      InstanceType: 't2.micro'
+      LaunchConfigurationName: 'SimpleWebServerLC'
+      SecurityGroups:
+        - 'sg-0762a24ffec5ca84d'
+      UserData: 
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+
+            yum install -y nginx
+
+            yum install -y aws-cfn-bootstrap
+
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v \
+              --stack ${AWS::StackName} \
+              --resource WebServersLC \
+              --configsets All \
+              --region ${AWS::Region}
+
+            # Signal the status from cfn-init
+            /opt/aws/bin/cfn-signal -e $? \
+              --stack ${AWS::StackName} \
+              --resource WebServersLC \
+              --region ${AWS::Region}
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          All:
+            - ConfigureStelligentProject
+        ConfigureStelligentProject:
+          packages:
+            yum:
+              nginx: []
+          files:
+            /usr/share/nginx/html/index.html:
+              content: !Sub '<ul><li>${nameParam}</li><li>${middlenameParam}</li><li>${teamParam}</li><li>${timezoneParam}</li><li>${stateParam}</li><li>${startdateParam}</li></ul>'
+              mode: '000644'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              nginx:
+                enabled: 'true'
+                ensureRunning: 'true'
+
+  nbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 20
+      HealthCheckPath: /index.html
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: "Name"
+          Value: "nb-target_group"
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 20
+      UnhealthyThresholdCount: 3
+      VpcId: vpc-0ef2430c4a3838858
+    DependsOn:
+      - nbALB
+
+  nbALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups: 
+        - sg-0762a24ffec5ca84d
+      Subnets: 
+        - 'subnet-01d68660fba20d536' 
+        - 'subnet-0649150db183b4779'
+        - 'subnet-02b5c80c62c2be14d'
+        - 'subnet-08e2bb358929ca17f'
+        - 'subnet-056e0b20e202f96e2'
+        - 'subnet-0b2fa1151652a1609'
+      Tags:
+        - Key: "Name"
+          Value: "nb-application-load-balancer"
+
+  nbALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: 
+        - TargetGroupArn: !Ref nbTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref nbALB
+      Port: 80
+      Protocol: HTTP
+
+  nbALBListerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Certificates:
+        - CertificateArn: arn:aws:acm:us-east-1:858633482938:certificate/52f0f9a7-eb35-4230-af1a-86612faaca4c
+      DefaultActions:
+        - TargetGroupArn: !Ref nbTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref nbALB
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-FS-2018-06
