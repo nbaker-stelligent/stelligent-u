@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  name:
+    Description: name
+    Type: String
+  team:
+    Description: title
+    Type: String
+  timezone:
+    Description: timezone
+    Type: String
+  state:
+    Description: state
+    Type: String
+  startdate:
+    Description: start_date
+    Type: String
+Resources:
+  nameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/name
+      Type: String
+      Value: !Ref name
+      Description: Name of the engineer
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  teamParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/team
+      Type: String
+      Value: !Ref team
+      Description: Engineer's team
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  timezoneParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/timezone
+      Type: String
+      Value: !Ref timezone
+      Description: Engineer's timezone
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  stateParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/state
+      Type: String
+      Value: !Ref timezone
+      Description: location
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+  startdateParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /nb/stelligent-u/lab11/title
+      Type: String
+      Value: !Ref startdate
+      Description: Engineer's start date
+      AllowedPattern: "^[a-zA-Z]{1,10}$"
+
+
+  middlename:
+    Description: Engineer's Middle Name
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /rtate_aa/stelligent-u/lab11/middle-name
