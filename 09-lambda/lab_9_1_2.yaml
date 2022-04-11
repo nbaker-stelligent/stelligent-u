@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function with cfn-response.
+Resources:
+  myLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Assumable role for basic lambda
+      RoleName: nbLambda
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+
+  myLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt myLambdaRole.Arn
+      Runtime: python3.9
+      Handler: index.lambda_handler
+
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              # TODO implement
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Hello AWS!')
+              }
+      Description: Invoke a function during stack creation.
+      VpcConfig: 
+        SecurityGroupIds:
+        - sg-089018023ef9eb281
+        SubnetIds:
+        - 'subnet-01d68660fba20d536' 
+        - 'subnet-0649150db183b4779'
+        - 'subnet-02b5c80c62c2be14d'
+        - 'subnet-08e2bb358929ca17f'
+        - 'subnet-056e0b20e202f96e2'
+        - 'subnet-0b2fa1151652a1609'
+
+  myLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties: 
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt myLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Ref myRestAPI
+
+  myRestAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties: 
+      Description: My rest API
+      Name: myRestAPI
+
+  myGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      ResourceId: !GetAtt myRestAPI.RootResourceId
+      RestApiId: !Ref myRestAPI
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+          IntegrationHttpMethod: POST
+          Type: AWS_PROXY
+          Uri: !Sub
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: !GetAtt myLambda.Arn
+
+  myAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref myRestAPI
+    DependsOn: myGatewayMethod
