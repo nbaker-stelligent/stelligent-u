@@ -3,6 +3,7 @@ Parameters:
   BucketNameParameter:
     Type: String
     Description: S3 Bucket Name
+    Default: nb-generated-stack-bucket
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket

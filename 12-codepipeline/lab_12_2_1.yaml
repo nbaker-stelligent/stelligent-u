@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  dynamoDB:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: myTable
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      AttributeDefinitions: 
+        - AttributeName: "id"
+          AttributeType: "S"
+  appIAMRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: 
+              - lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Description: String
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess

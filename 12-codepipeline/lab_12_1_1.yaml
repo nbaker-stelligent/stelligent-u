@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  BucketNameParameter:
+    Type: String
+  ghToken:
+    Type: String
+    NoEcho: true
+  ghOwner:
+    Type: String
+  ghRepo:
+    Type: String
+  ghBranch:
+    Type: String
+  appStackName:
+    Type: String
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketNameParameter
+    DeletionPolicy: Delete
+  nbCodepipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Description: Allow Codepipeline to do the things
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+  nbCloudformationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Description: Allows CloudFormation to manage buckets
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+  AppPipeline: 
+    Type: AWS::CodePipeline::Pipeline 
+    Properties: 
+      RoleArn:
+        Ref: nbCodepipelineRole 
+      ArtifactStore: 
+        Type: S3 
+        Location:
+          Ref: S3Bucket 
+      RoleArn: !GetAtt nbCodepipelineRole.Arn
+      Stages:
+      - Name: Source
+        Actions:
+          - Name: getSource
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Provider: GitHub
+              Version: 1
+            Configuration:
+              Owner: !Ref ghOwner
+              Repo: !Ref ghRepo
+              Branch: !Ref ghBranch
+              OAuthToken: !Ref ghToken
+            OutputArtifacts:
+              - Name: SourceCode
+            RunOrder: 1
+      - Name: Deploy
+        Actions:
+          - Name: deployBucket
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: "1"
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_IAM
+              RoleArn: !GetAtt nbCloudformationRole.Arn
+              StackName: !Ref appStackName
+              TemplatePath: !Sub "SourceCode::01-cloudformation/lab_1_1_1.yaml"
+            InputArtifacts:
+              - Name: SourceCode
+            RunOrder: 2
