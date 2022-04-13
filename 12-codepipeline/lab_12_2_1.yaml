@@ -10,6 +10,9 @@ Resources:
       AttributeDefinitions: 
         - AttributeName: "id"
           AttributeType: "S"
+      ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
   appIAMRole:
     Type: AWS::IAM::Role
     Properties: 

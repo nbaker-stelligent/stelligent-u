@@ -33,6 +33,8 @@ Resources:
               - codebuild.amazonaws.com
               - cloudformation.amazonaws.com
           Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
   appCodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties: 
@@ -41,6 +43,22 @@ Resources:
         Type: S3
       RoleArn: !GetAtt appIAMRole.Arn
       Stages: 
+        - Name: Source
+          Actions:
+            - Name: getSource
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Owner: !Ref ghOwner
+                Repo: !Ref ghRepo
+                Branch: !Ref ghBranch
+                OAuthToken: !Ref ghToken
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
         - Name: Deploy
           Actions: 
             - Name: deploy_a
@@ -56,32 +74,32 @@ Resources:
                 ChangeSetName: !Ref appStackName
                 Capabilities:
                   CAPABILITY_IAM
-                TemplatePath: SourceOutput::12-codepipeline/lab_12_2_1.yaml
+                TemplatePath: SourceCode::12-codepipeline/lab_12_2_1.yaml
               InputArtifacts: 
-                - Name: SourceOutput
+                - Name: SourceCode
               RunOrder: 1
-        - Name: Approval
-          ActionTypeId: 
-            Category: Approval
-            Owner: AWS
-            Provider: Manual
-            Version: 1
-          RunOrder: 2
-        - Name: deploy_b
-          ActionTypeId: 
-            Category: Deploy
-            Owner: AWS
-            Provider: CloudFormation
-            Version: 1
-          Configuration: 
-            ActionMode: "CHANGE_SET_EXECUTE"
-            StackName: !Ref appStackName
-            RoleArn: !GetAtt appIAMRole.Arn
-            Capabilities:
-              CAPABILITY_IAM
-            ChangeSetName:
-              !Ref appStackName
-            TemplatePath: SourceOutput::12-codepipeline/lab_12_2_1.yaml
-          InputArtifacts: 
-            - Name: SourceOutput
-          RunOrder: 3
+            - Name: Approval
+              ActionTypeId: 
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: 1
+              RunOrder: 2
+            - Name: deploy_b
+              ActionTypeId: 
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration: 
+                ActionMode: "CHANGE_SET_EXECUTE"
+                StackName: !Ref appStackName
+                RoleArn: !GetAtt appIAMRole.Arn
+                Capabilities:
+                  CAPABILITY_IAM
+                ChangeSetName:
+                  !Ref appStackName
+                TemplatePath: SourceCode::12-codepipeline/lab_12_2_1.yaml
+              InputArtifacts: 
+                - Name: SourceCode
+              RunOrder: 3
